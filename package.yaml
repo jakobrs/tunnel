@@ -1,0 +1,40 @@
+name:                tunnel
+version:             0.1.0.0
+github:              "jakobrs/tunnel"
+license:             BSD3
+author:              "Jakob Rødal Skaar"
+maintainer:          "jakobrs100@gmail.com"
+copyright:           "2019 Jakob Rødal Skaar"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+synopsis:            Create TCP tunnels (ala SSH's -L and -R)
+category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         See README.md
+
+dependencies:
+- base >= 4.7 && < 5
+- network
+- network-run
+- bytestring
+
+library:
+  source-dirs: src
+
+executables:
+  tunnel-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - tunnel
