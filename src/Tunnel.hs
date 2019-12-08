@@ -26,21 +26,14 @@ runTunnel host host' port port' bs debug =
       runTCPClient host' port' $ \srv -> do
         when debug $ putStrLn $ "Connection with server established: " ++ show srv
 
-        block <- newEmptyMVar :: IO (MVar ())
+        runOneWayTunnel cli srv bs
 
-        _cli2srv <- forkIO $ runOneWayTunnel cli srv bs block >> when debug (putStrLn "Client->server tunnel ended naturally")
-        _srv2cli <- forkIO $ runOneWayTunnel srv cli bs block >> when debug (putStrLn "Server->client tunnel ended naturally")
-
-        takeMVar block
-
-        putStrLn "Closing connections"
-
-runOneWayTunnel :: Socket -> Socket -> Int -> MVar () -> IO ()
-runOneWayTunnel from to bs block = while $ do
+runOneWayTunnel :: Socket -> Socket -> Int -> IO ()
+runOneWayTunnel from to bs = while $ do
   msg <- recv from bs
   if BS.null msg
-    then putMVar block () $> False
-    else sendAll to msg   $> True
+    then pure False
+    else sendAll to msg $> True
 
 while :: IO Bool -> IO ()
 while action = go
