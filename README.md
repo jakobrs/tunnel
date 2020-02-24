@@ -7,12 +7,15 @@ tunnel <format> <arguments>
 
 The following formats are supported:
 
+-   p:p   - local port, remote port
 -   p:h:p - local port, remote host, remote port
+- h:p:p   - local host, local port, remote port
 - h:p:h:p - local host, local port, remote host, remote port
--   p:s   - local port, remote unix
-- h:p:s   - local host, local port, remote unix
--   s:h:p - local unix, remote host, remote port
--   s:s   - local unix, remote unix
+-   p:u   - local port, remote unix
+- h:p:u   - local host, local port, remote unix
+-   u:p   - local unix, remote port
+-   u:h:p - local unix, remote host, remote port
+-   u:u   - local unix, remote unix
 
 Examples:
 
