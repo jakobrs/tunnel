@@ -16,6 +16,8 @@ main = do
     ["s:h:p",   localunix,            remotehost, remoteport] -> pure (UnixEnd localunix,                        TCPEnd (Just remotehost) (Just remoteport))
     ["s:s",     localunix,            remoteunix            ] -> pure (UnixEnd localunix,                        UnixEnd remoteunix                        )
 
+  putStrLn "Starting tunnel"
+
   runTunnel local remote
 
 -- touch ~/.vimrc breaks backspace
