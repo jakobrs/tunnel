@@ -8,15 +8,34 @@ import qualified Data.ByteString as BS
 import Network.Socket
 import Network.Socket.ByteString
 
--- The following two functions are based on
+data TunnelEnd
+  = TCPEnd (Maybe HostName) (Maybe ServiceName)
+  | UnixEnd String
+  deriving (Show, Eq, Ord)
+
+resolve :: [AddrInfoFlag] -> TunnelEnd -> IO AddrInfo
+resolve flags (TCPEnd host port) = do
+  let hints = defaultHints { addrSocketType = Stream, addrFlags = flags }
+  head <$> getAddrInfo (Just hints) host port
+resolve flags (UnixEnd location) = do
+  pure $ AddrInfo
+    { addrFlags = flags
+    , addrFamily = AF_UNIX
+    , addrSocketType = Stream
+    , addrProtocol = defaultProtocol
+    , addrAddress = SockAddrUnix location
+    , addrCanonName = Nothing              -- I've no idea what this *is*,
+                                           -- but we never use it anywhere
+                                           -- anyways.
+    }
+
+-- The runClient and runServer functions are based on
 -- code from the "network-run" package
 -- Copyright (c) 2019, IIJ Innovation Institute Inc.
 -- BSD 3-Clause License
-runClient :: Maybe HostName -> Maybe ServiceName -> (Socket -> IO ()) -> IO ()
-runClient host port client = do
-    let hints = defaultHints { addrSocketType = Stream }
-    addr <- head <$> getAddrInfo (Just hints) host port
-    print addr
+runClient :: TunnelEnd -> (Socket -> IO ()) -> IO ()
+runClient end client = do
+    addr <- resolve [] end
 
     E.bracket (open addr) close client
   where
@@ -26,14 +45,9 @@ runClient host port client = do
       connect sock $ addrAddress addr
       return sock
 
-runServer :: Maybe HostName -> Maybe ServiceName -> (Socket -> SockAddr -> IO ()) -> IO ()
-runServer host port server = do
-    let hints = defaultHints
-          { addrSocketType = Stream
-          , addrFlags = [ AI_PASSIVE ]
-          }
-    addr <- head <$> getAddrInfo (Just hints) host port
-    print addr
+runServer :: TunnelEnd -> (Socket -> SockAddr -> IO ()) -> IO ()
+runServer end server = do
+    addr <- resolve [ AI_PASSIVE ] end
 
     E.bracket (open addr) close (forever . loop)
   where
@@ -62,10 +76,10 @@ sendFromTo from to = loop
 
       putStrLn $ show from ++ " finished"
 
-runTunnel :: Maybe HostName -> Maybe ServiceName -> Maybe HostName -> Maybe ServiceName -> IO ()
-runTunnel localhost localport remotehost remoteport = runServer localhost localport $ \cli peer -> do
+runTunnel :: TunnelEnd -> TunnelEnd -> IO ()
+runTunnel local remote = runServer local $ \cli peer -> do
   putStrLn $ "Connection to " ++ show peer ++ ": " ++ show cli ++ " <--> ???"
-  runClient remotehost remoteport $ \srv -> do
+  runClient remote $ \srv -> do
     putStrLn $ "Connection to " ++ show peer ++ ": " ++ show cli ++ " <--> " ++ show srv
 
     race_ (sendFromTo cli srv) (sendFromTo srv cli)
