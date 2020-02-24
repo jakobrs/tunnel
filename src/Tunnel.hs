@@ -33,26 +33,20 @@ resolve flags (UnixEnd location) = do
                                            -- anyways.
     }
 
-runClient :: TunnelEnd -> (Socket -> IO ()) -> IO ()
-runClient end client = do
-    addr <- resolve [] end
-
-    E.bracket (open addr) close client
+runClient :: AddrInfo -> (Socket -> IO ()) -> IO ()
+runClient addr client = E.bracket open close client
   where
-    open :: AddrInfo -> IO Socket
-    open addr = do
+    open :: IO Socket
+    open = do
       sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
       connect sock $ addrAddress addr
       return sock
 
-runServer :: TunnelEnd -> (Socket -> SockAddr -> IO ()) -> IO ()
-runServer end server = do
-    addr <- resolve [ AI_PASSIVE ] end
-
-    E.bracket (open addr) close (forever . loop)
+runServer :: AddrInfo -> (Socket -> SockAddr -> IO ()) -> IO ()
+runServer addr server = E.bracket open close (forever . loop)
   where
-    open :: AddrInfo -> IO Socket
-    open addr = do
+    open :: IO Socket
+    open = do
       sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
       setSocketOption sock ReuseAddr 1
       withFdSocket sock $ setCloseOnExecIfNeeded
@@ -77,12 +71,16 @@ sendFromTo from to = loop
       putStrLn $ show from ++ " finished"
 
 runTunnel :: TunnelEnd -> TunnelEnd -> IO ()
-runTunnel local remote = runServer local $ \cli peer -> do
-  putStrLn $ "Connection to " ++ show peer ++ ": " ++ show cli ++ " <--> ???"
-  runClient remote $ \srv -> do
-    putStrLn $ "Connection to " ++ show peer ++ ": " ++ show cli ++ " <--> " ++ show srv
+runTunnel local remote = do
+  localAddr <- resolve [ AI_PASSIVE ] local
+  remoteAddr <- resolve [] remote
 
-    race_ (sendFromTo cli srv) (sendFromTo srv cli)
+  runServer localAddr $ \cli peer -> do
+    putStrLn $ "Connection to " ++ show peer ++ ": " ++ show cli ++ " <--> ???"
+    runClient remoteAddr $ \srv -> do
+      putStrLn $ "Connection to " ++ show peer ++ ": " ++ show cli ++ " <--> " ++ show srv
+
+      race_ (sendFromTo cli srv) (sendFromTo srv cli)
 
 -- touch ~/.vimrc breaks backspace
 -- vim: ts=2 sts=2 et ai sw=2:
