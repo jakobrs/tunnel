@@ -13,6 +13,10 @@ data TunnelEnd
   | UnixEnd String
   deriving (Show, Eq, Ord)
 
+-- The runClient, runServer and resolve functions are based on
+-- code from the "network-run" package
+-- Copyright (c) 2019, IIJ Innovation Institute Inc.
+-- BSD 3-Clause License
 resolve :: [AddrInfoFlag] -> TunnelEnd -> IO AddrInfo
 resolve flags (TCPEnd host port) = do
   let hints = defaultHints { addrSocketType = Stream, addrFlags = flags }
@@ -29,10 +33,6 @@ resolve flags (UnixEnd location) = do
                                            -- anyways.
     }
 
--- The runClient and runServer functions are based on
--- code from the "network-run" package
--- Copyright (c) 2019, IIJ Innovation Institute Inc.
--- BSD 3-Clause License
 runClient :: TunnelEnd -> (Socket -> IO ()) -> IO ()
 runClient end client = do
     addr <- resolve [] end
